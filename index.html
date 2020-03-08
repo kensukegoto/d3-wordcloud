@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+  <link href="https://fonts.googleapis.com/css?family=Cabin&display=swap" rel="stylesheet">
+  <style>
+    *{
+      margin: 0;
+      padding: 0;
+    }
+    figure{
+      height: 400px;
+    }
+    svg{
+      width: 100%;
+      height: 100%;
+      vertical-align: bottom;
+    }
+    /* https://qiita.com/7968/items/1d999354e00db53bcbd8 */
+    .g1 {
+      animation-name: updown;
+      animation-duration: 3s;
+      animation-iteration-count: infinite;
+      animation-timing-function: linear;
+    }
+    .g2 {
+      animation-name: updown2;
+      animation-duration: 3s;
+      animation-iteration-count: infinite;
+      animation-timing-function: linear;
+    }
+    .g3 {
+      animation-name: updown3;
+      animation-duration: 3s;
+      animation-iteration-count: infinite;
+      animation-timing-function: linear;
+    }
+    @keyframes updown{
+      0% {
+        transform: translateY(0px);
+      }
+      50%{
+        transform: translateY(4px);
+      }
+      100% {
+        transform: translateY(0px);
+      }
+    }
+    @keyframes updown2{
+      0% {
+        transform: translateY(-4px);
+      }
+      50%{
+        transform: translateY(0px);
+      }
+      100% {
+        transform: translateY(-4px);
+      }
+    }
+    @keyframes updown3{
+      0% {
+        transform: translateY(0px);
+      }
+      50%{
+        transform: translateY(-2px);
+      }
+      100% {
+        transform: translateY(0px);
+      }
+    }
+
+  </style>
+</head>
+<body>
+  <main>
+    <figure>
+      <svg></svg>
+    </figure>
+  </main>
+  <script src="https://d3js.org/d3.v5.min.js"></script>
+  <script src="./lib/d3cloud.js"></script>
+  <script>
+
+    var w = document.querySelector("figure").clientWidth;
+    var h = document.querySelector("figure").clientHeight;
+
+    d3.csv("./data/word.csv").then(data => {
+      // 自作
+      const color = (()=>{
+        // 色を取得する関数
+        const theme = d3.scaleLinear()
+          .domain([0, Math.ceil(data.length / 2) , data.length])
+          .range(["red", "yellow", "blue"]);
+
+        // 色の配列に変換
+        const colorArr = [...new Array(data.length)].map((e,i) =>{
+          return d3.rgb(theme(i)).hex();
+        })
+        // 色の配列をループしながら色を取得出来る関数
+        return d3.scaleOrdinal(colorArr);
+
+        // return d3.scaleOrdinal(d3.schemePaired);
+
+      })();
+
+      const color2 = d3.scaleOrdinal(d3.schemePaired);
+
+      /*
+      **** linearで作っても良い powを使用しているのは備忘録のため ****
+      linearに近い exponent(1)ならlinearと同じ
+      以下では　y = xの5乗 となる
+      */
+      const fontSize = d3.scalePow()
+        .exponent(5)
+        .domain([0,1]) // 0 ~ 1の入力値
+        .range([40,80]) // 5乗なのでより40に近い値が取得される傾向になる
+      
+      d3.layout.cloud()
+        .size([w,h])
+        .words(data)
+        .rotate(0)
+        .fontSize(()=> fontSize(Math.random()))
+        .fontWeight(["bold"])
+        .font(["Cabin"])
+        .text(d => d.Name)
+        .on("end",draw)
+        .start();
+
+      function draw(words){
+
+        let wc = d3.select("svg")
+          .append("g")
+          .attr("class","wordcloud")
+          .attr("transform", 
+          `translate(${w / 2},${h / 2})`);
+
+        let words2 = words.reduce((acc,e,i)=>{
+          if(acc[i % 3]){
+            acc[i % 3].push(e);
+          } else {
+            acc[i % 3] = [];
+            acc[i % 3].push(e);
+          }
+          return acc;
+        },[])
+ 
+        words2.forEach( (list,i) => {
+
+          let g = wc.append("g").attr("class",`g${i + 1}`);
+        
+          g.selectAll("text")
+            .data(list)
+            .enter()
+            .append("text")
+            .style("fill",(d,i)=>{
+              return color2(i);
+            })
+            .style("font-size",d => d.size + "px")
+            .style("font-family",d => d.font)
+            .attr("text-anchor","middle")
+            .attr("transform",d => {
+              return `translate(${d.x},${d.y}) rotate(${d.rotate})`
+            })
+            .text( d => d.text)
+        })
+
+
+      }
+    })
+
+
+  </script>
+</body>
+</html>
